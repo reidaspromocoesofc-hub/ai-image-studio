@@ -1088,6 +1088,18 @@ body {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
     }
+
+    .input-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .enhance-prompt-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+    }
 }
 
 @media (max-width: 480px) {
