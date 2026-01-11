@@ -1,12 +1,18 @@
 /**
  * AI Image Studio - Gerador de Imagens com Pollinations AI
+ * Integração com Cloudinary para salvar imagens na nuvem
  */
 
 // ===== Constants & Config =====
 const API_BASE = 'https://image.pollinations.ai/prompt';
 const TEXT_API_BASE = 'https://text.pollinations.ai';
 const STORAGE_KEY = 'ai_image_gallery';
-const MAX_GALLERY_ITEMS = 20;
+const MAX_GALLERY_ITEMS = 50;
+
+// Cloudinary Config
+const CLOUDINARY_CLOUD_NAME = 'dygiphehr';
+const CLOUDINARY_UPLOAD_PRESET = 'ai_gallery'; // Create this preset in Cloudinary dashboard
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 // ===== DOM Elements =====
 const elements = {
@@ -163,6 +169,33 @@ Regras:
     }
 }
 
+// ===== Upload to Cloudinary =====
+async function uploadToCloudinary(imageUrl, prompt) {
+    try {
+        const formData = new FormData();
+        formData.append('file', imageUrl);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        formData.append('folder', 'ai-gallery');
+        formData.append('context', `prompt=${prompt}`);
+
+        const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Cloudinary upload failed');
+        }
+
+        const data = await response.json();
+        return data.secure_url;
+    } catch (error) {
+        console.error('Cloudinary upload error:', error);
+        // Return original URL if upload fails
+        return imageUrl;
+    }
+}
+
 // ===== Image Generation =====
 async function generateImage() {
     const prompt = elements.promptInput.value.trim();
@@ -225,9 +258,16 @@ async function generateImage() {
         elements.resultModel.textContent = getModelName(model);
         elements.resultSize.textContent = `${width}×${height}`;
 
-        // Add to gallery
+        // Upload to Cloudinary in background
+        showToast('Imagem gerada! Salvando na nuvem...', 'success');
+
+        const cloudinaryUrl = await uploadToCloudinary(imageUrl, prompt);
+        currentImageUrl = cloudinaryUrl;
+
+        // Add to gallery with Cloudinary URL
         addToGallery({
-            url: imageUrl,
+            url: cloudinaryUrl,
+            originalUrl: imageUrl,
             prompt: prompt,
             model: model,
             size: `${width}×${height}`,
@@ -237,7 +277,7 @@ async function generateImage() {
         // Scroll to result
         elements.resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-        showToast('Imagem gerada com sucesso! 🎨', 'success');
+        showToast('Imagem salva na nuvem! ☁️', 'success');
 
     } catch (error) {
         console.error('Error generating image:', error);
